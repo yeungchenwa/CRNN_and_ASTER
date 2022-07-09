@@ -1,4 +1,13 @@
 dataset:
+  root = 'E:/DLVC/Datasets/STR/data_lmdb_release'
+
+  imgH = 32
+  imgW = 100
+  character = '0123456789abcdefghijklmnopqrstuvwxyz'
+  sensitive = False
+  data_filtering_off = False
+  batch_size = 16
+  batch_max_length = 25
 
 model:
 
