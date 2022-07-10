@@ -3,10 +3,10 @@ import os
 import argparse
 
 from dataset import LmdbDataset, RandomSequentialSampler, AlignCollate
-from concatdataset import ConcatDataset
+from dataset.concatdataset import ConcatDataset
 import torch
 from torch.utils.data import DataLoader
-from tools import CTCLabelConverter
+# from tools.utils import CTCLabelConverter
 
 def get_data(data_dir, opt, is_train, randomSampler=False):
     if isinstance(data_dir, list):
@@ -20,7 +20,7 @@ def get_data(data_dir, opt, is_train, randomSampler=False):
     print('total image: ', len(dataset))
     # print(dataset_list)
 
-    if randomSampler:        # caiyang
+    if randomSampler:
         sampler = RandomSequentialSampler(dataset, batch_size=opt.batch_size)
         shuffle = False
     else:
