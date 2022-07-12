@@ -1,3 +1,4 @@
+from unicodedata import bidirectional
 import torch
 import torch.nn as nn
 
@@ -12,9 +13,9 @@ class DeepbiLSTM(nn.Module):
             with the second LSTM taking in outputs of the first LSTM and
             computing the final results. Default: 1
     """
-    def __init__(self, input_size, hidden_size, output_size):
+    def __init__(self, input_size, hidden_size):
         super(DeepbiLSTM, self).__init__()
-        self.biLSTM = nn.LSTM(input_size=input_size, hidden_size=hidden_size, num_layers=2)
+        self.biLSTM = nn.LSTM(input_size=input_size, hidden_size=hidden_size, bidirectional=True, num_layers=2, batch_first=True)
         # self.linear = nn.Linear(hidden_size * 2, output_size)
     
     def forward(self, input):

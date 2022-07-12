@@ -1,16 +1,46 @@
-dataset:
-  root = 'E:/DLVC/Datasets/STR/data_lmdb_release'
+task: train
+seed: 1234
+name: CRNN
 
-  imgH = 32
-  imgW = 100
-  character = '0123456789abcdefghijklmnopqrstuvwxyz'
-  sensitive = False
-  data_filtering_off = False
-  batch_size = 16
-  batch_max_length = 25
+dataset:
+  batch_size: 768
+  num_workers: 4
+
+  train_root: '/home/yeung/DLVC/dataset/STR/scene_text_train'
+  test_root: '/home/yeung/DLVC/dataset/STR/test'
+  rgb: True                 # use rgb input
+  imgH: 32
+  imgW: 100
+  character: '0123456789abcdefghijklmnopqrstuvwxyz'
+  num_class: 36
+  sensitive: False
+  data_filtering_off: False
+  batch_max_length: 25
+  random_sampler: True
 
 model:
+  preprocessing: None
+  backbone: ResNet
+  sequence_modeling: biLSTM
+  prediction: CTC
+
+  in_channels: 1  # important
+  feat_channels: 512
+  hidden_size: 256
+
 
 train:
+  cuda: True
+  epoch: 100
+  # batch_size: 16
+  # num_workers: 4
+  optimizer: Adam
+  # checkpoint_path: '/home/yeung/DLVC/checkpoint/CRNN_and_Aster/demo.pth.tar'
+  checkpoint_path: False
+  lr: 0.001
 
-test:
+evaluate: True
+eval:
+  evaluation_metric: accuracy
+  
+

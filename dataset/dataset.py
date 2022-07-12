@@ -1,5 +1,6 @@
 import sys
 import re
+import math
 import six
 import lmdb
 import torch
@@ -14,10 +15,10 @@ from torch.utils.data import sampler
 
 class LmdbDataset(Dataset):
 
-    def __init__(self, root, opt):
+    def __init__(self, root, dataset_config):
 
         self.root = root
-        self.opt = opt
+        self.dataset_config = dataset_config
         self.env = lmdb.open(root, max_readers=32, readonly=True, lock=False, readahead=False, meminit=False)
         # print(self.env)
         if not self.env:
@@ -28,33 +29,27 @@ class LmdbDataset(Dataset):
             nSamples = int(txn.get('num-samples'.encode()))
             self.nSamples = nSamples
 
-            if self.opt.data_filtering_off:
+            if self.dataset_config['data_filtering_off']:
                 # for fast check or benchmark evaluation with no filtering
                 self.filtered_index_list = [index + 1 for index in range(self.nSamples)]
             else:
-                """ Filtering part
-                If you want to evaluate IC15-2077 & CUTE datasets which have special character labels,
-                use --data_filtering_off and only evaluate on alphabets and digits.
-                see https://github.com/clovaai/deep-text-recognition-benchmark/blob/6593928855fb7abb999a99f428b3e4477d4ae356/dataset.py#L190-L192
-
-                And if you want to evaluate them with the model trained with --sensitive option,
-                use --sensitive and --data_filtering_off,
-                see https://github.com/clovaai/deep-text-recognition-benchmark/blob/dff844874dbe9e0ec8c5a52a7bd08c7f20afe704/test.py#L137-L144
-                """
+                
                 self.filtered_index_list = []
                 for index in range(self.nSamples):
                     index += 1  # lmdb starts with 1
                     label_key = 'label-%09d'.encode() % index
                     label = txn.get(label_key).decode('utf-8')
 
-                    if len(label) > self.opt.batch_max_length:
+                    if len(label) > self.dataset_config['batch_max_length']:
                         # print(f'The length of the label is longer than max_length: length
                         #       {len(label)}, {label} in dataset {self.root}')
                         continue
-
+                    if '[' in label or '#' in label:
+                        continue
                     # By default, images containing characters which are not in opt.character are filtered.
                     # You can add [UNK] token to `opt.character` in utils.py instead of this filtering.
-                    out_of_char = f'[^{self.opt.character}]'
+                    # out_of_char = f'[^{self.dataset_config.character}]'
+                    out_of_char = self.dataset_config['character']
                     # out_of_char = f'[^{self.opt.character}]'
                     if re.search(out_of_char, label.lower()):
                         continue
@@ -80,7 +75,7 @@ class LmdbDataset(Dataset):
             buf.write(imgbuf)
             buf.seek(0)
             try:
-                if self.opt.rgb:
+                if self.dataset_config['rgb']:
                     img = Image.open(buf).convert('RGB')  # for color image
                 else:
                     img = Image.open(buf).convert('L')
@@ -88,23 +83,23 @@ class LmdbDataset(Dataset):
             except IOError:
                 print(f'Corrupted image for {index}')
                 # make dummy image and dummy label for corrupted image.
-                if self.opt.rgb:
-                    img = Image.new('RGB', (self.opt.imgW, self.opt.imgH))
+                if self.dataset_config['rgb']:
+                    img = Image.new('RGB', (self.dataset_config['imgW'], self.dataset_config['imgH']))
                 else:
-                    img = Image.new('L', (self.opt.imgW, self.opt.imgH))
+                    img = Image.new('L', (self.dataset_config['imgW'], self.dataset_config['imgH']))
                 label = '[dummy_label]'
 
-            if not self.opt.sensitive:
+            if not self.dataset_config['sensitive']:
                 label = label.lower()
 
             # We only train and evaluate on alphanumerics (or pre-defined character set in train.py)
-            out_of_char = f'[^{self.opt.character}]'
-            print(label)
+            # out_of_char = f'[^{self.dataset_config.character}]'
+            out_of_char = self.dataset_config['character']
             label = re.sub(out_of_char, '', label)
             # print('0')
-            # print(label)
+            label_length = len(label)
 
-        return (img, label)
+        return img, label, label_length
     
 class AlignCollate(object):
 
@@ -117,7 +112,8 @@ class AlignCollate(object):
     def __call__(self, batch):
         images, labels, lengths = zip(*batch)
         b_lengths = torch.IntTensor(lengths)
-        b_labels = torch.IntTensor(labels)
+        b_labels = labels
+        # b_labels = torch.IntTensor(labels)
 
         imgH = self.imgH
         imgW = self.imgW

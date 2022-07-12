@@ -2,39 +2,39 @@ from lib2to3.pytree import convert
 import os
 import argparse
 
-from dataset import LmdbDataset, RandomSequentialSampler, AlignCollate
+from dataset.dataset import LmdbDataset, RandomSequentialSampler, AlignCollate
 from dataset.concatdataset import ConcatDataset
 import torch
 from torch.utils.data import DataLoader
 # from tools.utils import CTCLabelConverter
 
-def get_data(data_dir, opt, is_train, randomSampler=False):
+def get_data(data_dir, dataset_config, is_train, randomSampler=False):
     if isinstance(data_dir, list):
         dataset_list = []
         for data_dir_ in data_dir:
             print(data_dir_)
-            dataset_list.append(LmdbDataset(data_dir_, opt))
+            dataset_list.append(LmdbDataset(data_dir_, dataset_config))
         dataset = ConcatDataset(dataset_list)
     else:
-        dataset = LmdbDataset(data_dir, opt)
+        dataset = LmdbDataset(data_dir, dataset_config)
     print('total image: ', len(dataset))
     # print(dataset_list)
 
     if randomSampler:
-        sampler = RandomSequentialSampler(dataset, batch_size=opt.batch_size)
+        sampler = RandomSequentialSampler(dataset, batch_size=dataset_config['batch_size'])
         shuffle = False
     else:
         sampler = None
         shuffle = True
 
     if is_train:
-        data_loader = DataLoader(dataset, batch_size=opt.batch_size, num_workers=opt.num_workers,
+        data_loader = DataLoader(dataset, batch_size=dataset_config['batch_size'], num_workers=dataset_config['num_workers'],
                                 shuffle=shuffle, pin_memory=True, drop_last=True,sampler=sampler,
-                                collate_fn=AlignCollate(imgH=opt.imgH, imgW=opt.imgW))
+                                collate_fn=AlignCollate(imgH=dataset_config['imgH'], imgW=dataset_config['imgW']))
     else:
-        data_loader = DataLoader(dataset, batch_size=opt.batch_size, num_workers=opt.num_workers,
-                                shuffle=True, pin_memory=True, drop_last=False, 
-                                collate_fn=AlignCollate(imgH=opt.imgH, imgW=opt.imgW))
+        data_loader = DataLoader(dataset, batch_size=dataset_config['batch_size'], num_workers=dataset_config['num_workers'],
+                                shuffle=True, pin_memory=True, drop_last=True, 
+                                collate_fn=AlignCollate(imgH=dataset_config['imgH'], imgW=dataset_config['imgW']))
 
     return dataset, data_loader
 

@@ -99,10 +99,13 @@ class ResNet_in_STR(nn.Module):
     # Necessary???
     cnn_feat = x5.squeeze(2) # [N, c, w]
     cnn_feat = cnn_feat.transpose(2, 1)
+    # print(cnn_feat.size())
     return cnn_feat
 
-x = torch.randn(3, 3, 32, 100)
+"""
+x = torch.randn(3, 1, 32, 100)
 net = ResNet_in_STR()
 feature_map = net(x)
 print(feature_map.size())
 print(net)
+"""
